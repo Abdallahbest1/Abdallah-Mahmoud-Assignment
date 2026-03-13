@@ -1,5 +1,27 @@
 const fs = require("fs");
 
+function toSeconds12h(timeStr) {
+    timeStr = timeStr.trim().toLowerCase();
+    const period = timeStr.slice(-2); // "am" or "pm"
+    const timePart = timeStr.slice(0, -2).trim();
+    let [h, m, s] = timePart.split(":").map(Number);
+    if (period === "pm" && h !== 12) h += 12;
+    if (period === "am" && h === 12) h = 0;
+    return h * 3600 + m * 60 + s;
+}
+
+function hmsToSeconds(hmsStr) {
+    const [h, m, s] = hmsStr.trim().split(":").map(Number);
+    return h * 3600 + m * 60 + s;
+}
+
+function secondsToHMS(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
@@ -8,6 +30,7 @@ const fs = require("fs");
 // ============================================================
 function getShiftDuration(startTime, endTime) {
     // TODO: Implement this function
+    return secondsToHMS(toSeconds12h(endTime) - toSeconds12h(startTime));
 }
 
 // ============================================================
@@ -18,6 +41,23 @@ function getShiftDuration(startTime, endTime) {
 // ============================================================
 function getIdleTime(startTime, endTime) {
     // TODO: Implement this function
+        const DELIVERY_START = 8  * 3600; 
+    const DELIVERY_END   = 22 * 3600; 
+
+    const startSec = toSeconds12h(startTime);
+    const endSec   = toSeconds12h(endTime);
+
+    let idle = 0;
+
+    if (startSec < DELIVERY_START) {
+        idle += Math.min(DELIVERY_START, endSec) - startSec;
+    }
+
+    if (endSec > DELIVERY_END) {
+        idle += endSec - Math.max(DELIVERY_END, startSec);
+    }
+
+    return secondsToHMS(idle);
 }
 
 // ============================================================
@@ -28,6 +68,8 @@ function getIdleTime(startTime, endTime) {
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
     // TODO: Implement this function
+     return secondsToHMS(hmsToSeconds(shiftDuration) - hmsToSeconds(idleTime));
+
 }
 
 // ============================================================
@@ -38,6 +80,10 @@ function getActiveTime(shiftDuration, idleTime) {
 // ============================================================
 function metQuota(date, activeTime) {
     // TODO: Implement this function
+    const [year, month, day] = date.split("-").map(Number);
+    const isEid = (year === 2025 && month === 4 && day >= 10 && day <= 30);
+    const quota = isEid ? 6 * 3600 : 8 * 3600 + 24 * 60;
+    return hmsToSeconds(activeTime) >= quota;
 }
 
 // ============================================================
