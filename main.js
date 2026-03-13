@@ -225,7 +225,7 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
     const s = totalSeconds % 60;
-    return `${String(h).padStart(3, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 
 }
 
@@ -239,14 +239,18 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-    // TODO: Implement this function
-        const shiftContent = fs.readFileSync(textFile, "utf-8");
-    const shiftLines   = shiftContent.split("\n").filter(line => line.trim() !== "");
 
-    const rateContent  = fs.readFileSync(rateFile, "utf-8");
-    const rateLines    = rateContent.split("\n").filter(line => line.trim() !== "");
+    const fs = require("fs");
+    const targetMonth = Number(month);
+
+    const shiftContent = fs.readFileSync(textFile, "utf-8");
+    const shiftLines = shiftContent.split("\n").filter(line => line.trim() !== "");
+
+    const rateContent = fs.readFileSync(rateFile, "utf-8");
+    const rateLines = rateContent.split("\n").filter(line => line.trim() !== "");
 
     let dayOff = null;
+
     for (const line of rateLines) {
         const cols = line.split(",");
         if (cols[0].trim() === driverID) {
@@ -255,37 +259,53 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
         }
     }
 
-    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    if (dayOff === null) {
+        return "000:00:00";
+    }
+
+    const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 
     let totalSeconds = 0;
 
     for (const line of shiftLines) {
+
         const cols = line.split(",");
-        if (cols[0].trim() === driverID) {
-            const dateStr = cols[2].trim();
-            const recordMonth = parseInt(dateStr.split("-")[1]);
 
-            if (recordMonth !== month) continue;
+        if (cols[0].trim() !== driverID) continue;
 
-            const dateObj  = new Date(dateStr);
-            const dayName  = dayNames[dateObj.getDay()];
-            if (dayName === dayOff) continue;
+        const dateStr = cols[2].trim();
+        const parts = dateStr.split("-");
+        const recordMonth = Number(parts[1]);
 
-            const [year, mon, day] = dateStr.split("-").map(Number);
-            const isEid = (year === 2025 && mon === 4 && day >= 10 && day <= 30);
+        if (recordMonth !== targetMonth) continue;
 
-            totalSeconds += isEid ? 6 * 3600 : 8 * 3600 + 24 * 60;
+        const year = Number(parts[0]);
+        const mon = Number(parts[1]);
+        const day = Number(parts[2]);
+
+        const dateObj = new Date(year, mon - 1, day);
+        const dayName = dayNames[dateObj.getDay()];
+
+        if (dayName === dayOff) continue;
+
+        const isEid = (year === 2025 && mon === 4 && day >= 10 && day <= 30);
+
+        if (isEid) {
+            totalSeconds += 6 * 3600;
+        } else {
+            totalSeconds += (8 * 3600) + (24 * 60);
         }
     }
 
     totalSeconds -= bonusCount * 2 * 3600;
+
     if (totalSeconds < 0) totalSeconds = 0;
 
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
     const s = totalSeconds % 60;
-    return `${String(h).padStart(3, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 
+    return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
 // ============================================================
