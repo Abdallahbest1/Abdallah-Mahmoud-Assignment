@@ -94,6 +94,53 @@ function metQuota(date, activeTime) {
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
     // TODO: Implement this function
+        const { driverID, driverName, date, startTime, endTime } = shiftObj;
+
+    const content = fs.readFileSync(textFile, "utf-8");
+    const lines = content.split("\n").filter(line => line.trim() !== "");
+
+    for (const line of lines) {
+        const cols = line.split(",");
+        if (cols[0].trim() === driverID && cols[2].trim() === date) {
+            return {};
+        }
+    }
+
+    const shiftDuration = getShiftDuration(startTime, endTime);
+    const idleTime      = getIdleTime(startTime, endTime);
+    const activeTime    = getActiveTime(shiftDuration, idleTime);
+    const quota         = metQuota(date, activeTime);
+    const hasBonus      = false;
+
+    const newEntry = `${driverID},${driverName},${date},${startTime},${endTime},${shiftDuration},${idleTime},${activeTime},${quota},${hasBonus}`;
+
+    let lastIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].split(",")[0].trim() === driverID) {
+            lastIndex = i;
+        }
+    }
+
+    if (lastIndex === -1) {
+        lines.push(newEntry);
+    } else {
+        lines.splice(lastIndex + 1, 0, newEntry);
+    }
+
+    fs.writeFileSync(textFile, lines.join("\n") + "\n", "utf-8");
+
+    return {
+        driverID,
+        driverName,
+        date,
+        startTime,
+        endTime,
+        shiftDuration,
+        idleTime,
+        activeTime,
+        metQuota: quota,
+        hasBonus
+    };
 }
 
 // ============================================================
@@ -106,6 +153,19 @@ function addShiftRecord(textFile, shiftObj) {
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
     // TODO: Implement this function
+    const content = fs.readFileSync(textFile, "utf-8");
+    const lines = content.split("\n").filter(line => line.trim() !== "");
+
+    for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        if (cols[0].trim() === driverID && cols[2].trim() === date) {
+            cols[9] = newValue.toString();
+            lines[i] = cols.join(",");
+            break;
+        }
+    }
+
+    fs.writeFileSync(textFile, lines.join("\n") + "\n", "utf-8");
 }
 
 // ============================================================
